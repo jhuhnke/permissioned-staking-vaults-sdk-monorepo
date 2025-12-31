@@ -13,7 +13,9 @@ import {
 
 import { hoodi } from "../chain";
 import { nullifierAbi } from "../abi/nullifier";
+import { ownershipAbi } from "../abi/ownership";
 import { createNullifierClient } from "./NullifierClient";
+import { createOwnershipClient } from "./OwnershipClient";
 
 /**
  * Minimal config for a usable SDK client.
@@ -45,10 +47,12 @@ export type ProtocolClient = {
 
   // facet clients
   nullifier: ReturnType<typeof createNullifierClient>;
+  ownership: ReturnType<typeof createOwnershipClient>;
 
   // convenience (optional): raw contract handle for quick reads
   contracts: {
     nullifier: ReturnType<typeof getContract>;
+    ownership: ReturnType<typeof getContract>;
   };
 };
 
@@ -89,6 +93,12 @@ export function createClient(config: ClientConfig): ProtocolClient {
     client: { public: publicClient, wallet: walletClient },
   });
 
+  const ownershipContract = getContract({
+    address: config.diamondAddress,
+    abi: ownershipAbi,
+    client: { public: publicClient, wallet: walletClient },
+  });
+
   // Build facet clients using shared config
   const shared = {
     diamondAddress: config.diamondAddress,
@@ -103,9 +113,11 @@ export function createClient(config: ClientConfig): ProtocolClient {
     walletClient,
 
     nullifier: createNullifierClient(shared),
+    ownership: createOwnershipClient(shared),
 
     contracts: {
       nullifier: nullifierContract,
+      ownership: ownershipContract,
     },
   };
 }
