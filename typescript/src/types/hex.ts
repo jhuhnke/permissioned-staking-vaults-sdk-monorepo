@@ -3,6 +3,10 @@ export type Hex = `0x${string}`;
 
 /** Convenience alias for readability (cannot enforce length at compile-time). */
 export type Bytes32 = Hex;
+export type Bytes4 = Hex;
+export type Bytes = Hex; 
+
+/** Asserts that a Hex value is a Bytes32 (0x + 64 hex chars). */
 
 export function assertBytes32(value: Hex, label = "value"): asserts value is Bytes32 {
   // 0x + 64 hex chars = 66 length

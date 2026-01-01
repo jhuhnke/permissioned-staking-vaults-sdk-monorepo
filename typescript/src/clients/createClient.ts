@@ -16,10 +16,12 @@ import { hoodi } from "../chain";
 import { nullifierAbi } from "../abi/nullifier";
 import { ownershipAbi } from "../abi/ownership";
 import { policyAbi } from "../abi/policy";
+import { privateWithdrawAbi } from "../abi/privateWithdraw";
 
 import { createNullifierClient } from "./NullifierClient";
 import { createOwnershipClient } from "./OwnershipClient";
 import { createPolicyClient } from "./PolicyClient";
+import { createPrivateWithdrawClient } from "./PrivateWithdrawClient";
 
 /**
  * Minimal config for a usable SDK client.
@@ -48,6 +50,7 @@ export type ProtocolClient = {
   diamondAddress: Address;
   publicClient: PublicClient<Transport, Chain>;
   walletClient?: WalletClient<Transport, Chain>;
+  privateWithdraw: ReturnType<typeof createPrivateWithdrawClient>;
 
   // facet clients
   nullifier: ReturnType<typeof createNullifierClient>;
@@ -59,6 +62,7 @@ export type ProtocolClient = {
     nullifier: ReturnType<typeof getContract>;
     ownership: ReturnType<typeof getContract>;
     policy: ReturnType<typeof getContract>;
+    privateWithdraw: ReturnType<typeof getContract>;
   };
 };
 
@@ -103,7 +107,7 @@ export function createClient(config: ClientConfig): ProtocolClient {
     diamondAddress: config.diamondAddress,
     publicClient,
     walletClient,
-    account
+    account: config.account,
   } as const;
 
   // Optional: expose raw contract handles (useful for debugging)
@@ -125,6 +129,12 @@ export function createClient(config: ClientConfig): ProtocolClient {
     client: { public: publicClient, wallet: walletClient },
   });
 
+  const privateWithdrawContract = getContract({
+    address: config.diamondAddress,
+    abi: privateWithdrawAbi,
+    client: { public: publicClient },
+  });
+
   return {
     chain,
     diamondAddress: config.diamondAddress,
@@ -135,12 +145,14 @@ export function createClient(config: ClientConfig): ProtocolClient {
     nullifier: createNullifierClient(shared),
     ownership: createOwnershipClient(shared),
     policy: createPolicyClient(shared),
+    privateWithdraw: createPrivateWithdrawClient(shared),
 
     // raw contracts
     contracts: {
       nullifier: nullifierContract,
       ownership: ownershipContract,
       policy: policyContract,
+      privateWithdraw: privateWithdrawContract,
     },
   };
 }
