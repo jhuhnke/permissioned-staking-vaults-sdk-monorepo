@@ -18,12 +18,14 @@ import { ownershipAbi } from "../abi/ownership";
 import { policyAbi } from "../abi/policy";
 import { privateWithdrawAbi } from "../abi/privateWithdraw";
 import { shieldedDepositAbi } from "../abi/shieldedDeposit";
+import { vaultCoreAbi } from "../abi/vaultCore";
 
 import { createNullifierClient } from "./NullifierClient";
 import { createOwnershipClient } from "./OwnershipClient";
 import { createPolicyClient } from "./PolicyClient";
 import { createPrivateWithdrawClient } from "./PrivateWithdrawClient";
 import { createShieldedDepositClient } from "./ShieldedDepositClient";
+import { createVaultCoreClient } from "./VaultCoreClient";
 
 /**
  * Minimal config for a usable SDK client.
@@ -54,6 +56,7 @@ export type ProtocolClient = {
   walletClient?: WalletClient<Transport, Chain>;
   privateWithdraw: ReturnType<typeof createPrivateWithdrawClient>;
   shieldedDeposit: ReturnType<typeof createShieldedDepositClient>;
+  vault: ReturnType<typeof createVaultCoreClient>;
 
   // facet clients
   nullifier: ReturnType<typeof createNullifierClient>;
@@ -67,6 +70,7 @@ export type ProtocolClient = {
     policy: ReturnType<typeof getContract>;
     privateWithdraw: ReturnType<typeof getContract>;
     shieldedDeposit: ReturnType<typeof getContract>;
+    vaultCore: ReturnType<typeof getContract>;
   };
 };
 
@@ -145,6 +149,12 @@ export function createClient(config: ClientConfig): ProtocolClient {
     client: { public: publicClient },
   });
 
+  const vaultCoreContract = getContract({
+    address: config.diamondAddress,
+    abi: vaultCoreAbi,
+    client: { public: publicClient },
+  });
+
   return {
     chain,
     diamondAddress: config.diamondAddress,
@@ -157,6 +167,7 @@ export function createClient(config: ClientConfig): ProtocolClient {
     policy: createPolicyClient(shared),
     privateWithdraw: createPrivateWithdrawClient(shared),
     shieldedDeposit: createShieldedDepositClient(shared),
+    vault: createVaultCoreClient(shared),
 
     // raw contracts
     contracts: {
@@ -165,6 +176,7 @@ export function createClient(config: ClientConfig): ProtocolClient {
       policy: policyContract,
       privateWithdraw: privateWithdrawContract,
       shieldedDeposit: shieldedDepositContract,
+      vaultCore: vaultCoreContract,
     },
   };
 }
