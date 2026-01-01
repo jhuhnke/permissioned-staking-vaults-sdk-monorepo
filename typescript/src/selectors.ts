@@ -83,7 +83,7 @@ export const SELECTORS = {
   // ──────────────────────────────
   DiamondCut: {
     diamondCut: toFunctionSelector("diamondCut((address,uint8,bytes4[])[],address,bytes)")
-},
+ },
   // ──────────────────────────────
   // DiamondLoupeFacet
   // ──────────────────────────────
