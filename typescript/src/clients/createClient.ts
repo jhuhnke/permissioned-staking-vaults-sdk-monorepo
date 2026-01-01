@@ -17,11 +17,13 @@ import { nullifierAbi } from "../abi/nullifier";
 import { ownershipAbi } from "../abi/ownership";
 import { policyAbi } from "../abi/policy";
 import { privateWithdrawAbi } from "../abi/privateWithdraw";
+import { shieldedDepositAbi } from "../abi/shieldedDeposit";
 
 import { createNullifierClient } from "./NullifierClient";
 import { createOwnershipClient } from "./OwnershipClient";
 import { createPolicyClient } from "./PolicyClient";
 import { createPrivateWithdrawClient } from "./PrivateWithdrawClient";
+import { createShieldedDepositClient } from "./ShieldedDepositClient";
 
 /**
  * Minimal config for a usable SDK client.
@@ -51,6 +53,7 @@ export type ProtocolClient = {
   publicClient: PublicClient<Transport, Chain>;
   walletClient?: WalletClient<Transport, Chain>;
   privateWithdraw: ReturnType<typeof createPrivateWithdrawClient>;
+  shieldedDeposit: ReturnType<typeof createShieldedDepositClient>;
 
   // facet clients
   nullifier: ReturnType<typeof createNullifierClient>;
@@ -63,6 +66,7 @@ export type ProtocolClient = {
     ownership: ReturnType<typeof getContract>;
     policy: ReturnType<typeof getContract>;
     privateWithdraw: ReturnType<typeof getContract>;
+    shieldedDeposit: ReturnType<typeof getContract>;
   };
 };
 
@@ -135,6 +139,12 @@ export function createClient(config: ClientConfig): ProtocolClient {
     client: { public: publicClient },
   });
 
+  const shieldedDepositContract = getContract({
+    address: config.diamondAddress,
+    abi: shieldedDepositAbi,
+    client: { public: publicClient },
+  });
+
   return {
     chain,
     diamondAddress: config.diamondAddress,
@@ -146,6 +156,7 @@ export function createClient(config: ClientConfig): ProtocolClient {
     ownership: createOwnershipClient(shared),
     policy: createPolicyClient(shared),
     privateWithdraw: createPrivateWithdrawClient(shared),
+    shieldedDeposit: createShieldedDepositClient(shared),
 
     // raw contracts
     contracts: {
@@ -153,6 +164,7 @@ export function createClient(config: ClientConfig): ProtocolClient {
       ownership: ownershipContract,
       policy: policyContract,
       privateWithdraw: privateWithdrawContract,
+      shieldedDeposit: shieldedDepositContract,
     },
   };
 }
