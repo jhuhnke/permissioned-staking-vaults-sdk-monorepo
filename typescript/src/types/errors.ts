@@ -1,4 +1,6 @@
-import type { Address } from "viem";
+import type { Address, Hex } from "viem";
+
+export type Bytes4 = Hex; 
 
 /** Thrown when a method requires a walletClient but the SDK was created read-only. */
 export class MissingWalletClientError extends Error {
@@ -22,5 +24,25 @@ export class NotContractOwnerError extends Error {
   constructor(caller: Address) {
     super(`Caller is not the contract owner: ${caller}`);
     this.caller = caller;
+  }
+}
+
+export class PolicyInvalidSelectorError extends Error {
+  name = "PolicyInvalidSelectorError";
+  selector: Bytes4;
+  constructor(selector: Bytes4) {
+    super(`Invalid selector: ${selector}`);
+    this.selector = selector;
+  }
+}
+
+export class PolicyUnauthorizedError extends Error {
+  name = "PolicyUnauthorizedError";
+  sender: Address;
+  requiredRole: Hex; // bytes32
+  constructor(sender: Address, requiredRole: Hex) {
+    super(`Unauthorized: sender=${sender} requiredRole=${requiredRole}`);
+    this.sender = sender;
+    this.requiredRole = requiredRole;
   }
 }

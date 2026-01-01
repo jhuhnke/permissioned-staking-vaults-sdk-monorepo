@@ -1,47 +1,59 @@
 // src/clients/OwnershipClient.ts
-import {
-  getContract,
-  type Address,
-  type PublicClient,
-  type WalletClient,
-  type Transport,
-  type Chain,
-} from "viem";
+import type { Address, Hash } from "viem";
+import { getContract } from "viem";
 
 import { ownershipAbi } from "../abi/ownership";
-import { MissingWalletClientError } from "../types/errors";
+import type { ProtocolClientConfig } from "../types/client";
 
-export type OwnershipClientConfig = {
-  diamondAddress: Address;
-  publicClient: PublicClient<Transport, Chain>;
-  walletClient?: WalletClient<Transport, Chain>;
+export type OwnershipClient = {
+  // reads
+  owner(): Promise<Address>;
+
+  // writes (require walletClient + account)
+  transferOwnership(args: { newOwner: Address }): Promise<Hash>;
 };
 
-export function createOwnershipClient(cfg: OwnershipClientConfig) {
+export function createOwnershipClient(cfg: ProtocolClientConfig): OwnershipClient {
+  const requireWriteContext = (): { account: Address } => {
+    if (!cfg.walletClient) {
+      throw new Error(
+        "OwnershipClient: walletClient required for writes. Pass walletClient (or account) to createClient(...).",
+      );
+    }
+    if (!cfg.account) {
+      throw new Error(
+        "OwnershipClient: account required for writes. Pass account to createClient(...) or ensure walletClient.account is set and forwarded.",
+      );
+    }
+    return { account: cfg.account };
+  };
+
+  // Only used for ABI typing ergonomics (events etc. later)
   const contract = getContract({
     address: cfg.diamondAddress,
     abi: ownershipAbi,
-    client: { public: cfg.publicClient, wallet: cfg.walletClient },
+    client: { public: cfg.publicClient },
   });
 
   return {
-    /** Read: current diamond owner */
-    async owner(): Promise<Address> {
-      return contract.read.owner();
+    async owner() {
+      return cfg.publicClient.readContract({
+        address: cfg.diamondAddress,
+        abi: contract.abi,
+        functionName: "owner",
+        args: [],
+      });
     },
 
-    /**
-     * Write: transfer ownership
-     * Returns the tx hash (common SDK convention) — you can also return receipt if you prefer.
-     */
-    async transferOwnership(args: { newOwner: Address }): Promise<`0x${string}`> {
-      if (!cfg.walletClient) throw new MissingWalletClientError();
-
-      // viem write calls typically return a tx hash
-      return contract.write.transferOwnership([args.newOwner]);
+    async transferOwnership({ newOwner }) {
+      const { account } = requireWriteContext();
+      return cfg.walletClient!.writeContract({
+        address: cfg.diamondAddress,
+        abi: contract.abi,
+        functionName: "transferOwnership",
+        args: [newOwner],
+        account, // ✅ fixes the "account missing" + typing issues
+      });
     },
-
-    // Expose the raw contract in case you want to do advanced things later (events, simulate, etc.)
-    contract,
   };
 }

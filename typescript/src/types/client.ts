@@ -1,5 +1,9 @@
 // src/types/client.ts
-import type { Address, Chain, Transport } from "viem";
+import type { 
+    Address, 
+    Chain, 
+    Transport 
+} from "viem";
 import type { PublicClient, WalletClient } from "viem";
 
 /**
@@ -10,4 +14,5 @@ export type ProtocolClientConfig = {
   diamondAddress: Address;
   publicClient: PublicClient<Transport, Chain>;
   walletClient?: WalletClient<Transport, Chain>;
+  account?: Address;
 };

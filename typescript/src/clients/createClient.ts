@@ -12,10 +12,14 @@ import {
 } from "viem";
 
 import { hoodi } from "../chain";
+
 import { nullifierAbi } from "../abi/nullifier";
 import { ownershipAbi } from "../abi/ownership";
+import { policyAbi } from "../abi/policy";
+
 import { createNullifierClient } from "./NullifierClient";
 import { createOwnershipClient } from "./OwnershipClient";
+import { createPolicyClient } from "./PolicyClient";
 
 /**
  * Minimal config for a usable SDK client.
@@ -48,11 +52,13 @@ export type ProtocolClient = {
   // facet clients
   nullifier: ReturnType<typeof createNullifierClient>;
   ownership: ReturnType<typeof createOwnershipClient>;
+  policy: ReturnType<typeof createPolicyClient>;
 
-  // convenience (optional): raw contract handle for quick reads
+  // convenience (optional): raw contract handles for quick reads/debugging
   contracts: {
     nullifier: ReturnType<typeof getContract>;
     ownership: ReturnType<typeof getContract>;
+    policy: ReturnType<typeof getContract>;
   };
 };
 
@@ -86,6 +92,20 @@ export function createClient(config: ClientConfig): ProtocolClient {
         })
       : undefined);
 
+  const account =
+  config.account ??
+  (config.walletClient && "account" in config.walletClient
+    ? (config.walletClient.account as Address | undefined)
+    : undefined);
+
+  // Shared config for all facet clients
+  const shared = {
+    diamondAddress: config.diamondAddress,
+    publicClient,
+    walletClient,
+    account
+  } as const;
+
   // Optional: expose raw contract handles (useful for debugging)
   const nullifierContract = getContract({
     address: config.diamondAddress,
@@ -99,12 +119,11 @@ export function createClient(config: ClientConfig): ProtocolClient {
     client: { public: publicClient, wallet: walletClient },
   });
 
-  // Build facet clients using shared config
-  const shared = {
-    diamondAddress: config.diamondAddress,
-    publicClient,
-    walletClient,
-  };
+  const policyContract = getContract({
+    address: config.diamondAddress,
+    abi: policyAbi,
+    client: { public: publicClient, wallet: walletClient },
+  });
 
   return {
     chain,
@@ -112,12 +131,16 @@ export function createClient(config: ClientConfig): ProtocolClient {
     publicClient,
     walletClient,
 
+    // facet clients
     nullifier: createNullifierClient(shared),
     ownership: createOwnershipClient(shared),
+    policy: createPolicyClient(shared),
 
+    // raw contracts
     contracts: {
       nullifier: nullifierContract,
       ownership: ownershipContract,
+      policy: policyContract,
     },
   };
 }
