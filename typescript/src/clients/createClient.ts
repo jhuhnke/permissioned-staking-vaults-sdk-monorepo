@@ -20,6 +20,7 @@ import { privateWithdrawAbi } from "../abi/privateWithdraw";
 import { shieldedDepositAbi } from "../abi/shieldedDeposit";
 import { vaultCoreAbi } from "../abi/vaultCore";
 import { verifierAdminAbi } from "../abi/verifierAdmin";
+import { diamondCutAbi } from "../abi/diamondCut";
 
 import { createNullifierClient } from "./NullifierClient";
 import { createOwnershipClient } from "./OwnershipClient";
@@ -28,11 +29,13 @@ import { createPrivateWithdrawClient } from "./PrivateWithdrawClient";
 import { createShieldedDepositClient } from "./ShieldedDepositClient";
 import { createVaultCoreClient } from "./VaultCoreClient";
 import { createVerifierAdminClient } from "./VerifierAdminClient";
+import { createDiamondCutClient } from "./DiamondCutClient";
+
 /**
  * Minimal config for a usable SDK client.
  * - diamondAddress: REQUIRED because all calls route through the Diamond
  * - rpcUrl: optional override (defaults to chain rpc)
- * - account: optional (enables WalletClient writes)
+ * - account: optional (enables writeContract calls)
  * - walletClient/publicClient: optional injection (framework apps often already have these)
  */
 export type ClientConfig = {
@@ -43,7 +46,7 @@ export type ClientConfig = {
   rpcUrl?: string;
 
   // signing config (choose one)
-  account?: Address; // convenience for simple scripts
+  account?: Address; // convenience for scripts (also required by viem writeContract in our clients)
   walletClient?: WalletClient<Transport, Chain>; // preferred in apps
 
   // optional injection (advanced)
@@ -53,17 +56,25 @@ export type ClientConfig = {
 export type ProtocolClient = {
   chain: Chain;
   diamondAddress: Address;
+
   publicClient: PublicClient<Transport, Chain>;
   walletClient?: WalletClient<Transport, Chain>;
-  privateWithdraw: ReturnType<typeof createPrivateWithdrawClient>;
-  shieldedDeposit: ReturnType<typeof createShieldedDepositClient>;
-  vault: ReturnType<typeof createVaultCoreClient>;
-  verifierAdmin: ReturnType<typeof createVerifierAdminClient>;
+  /** Account used for writeContract calls (required by our write wrappers) */
+  account?: Address;
 
   // facet clients
   nullifier: ReturnType<typeof createNullifierClient>;
   ownership: ReturnType<typeof createOwnershipClient>;
   policy: ReturnType<typeof createPolicyClient>;
+  privateWithdraw: ReturnType<typeof createPrivateWithdrawClient>;
+  shieldedDeposit: ReturnType<typeof createShieldedDepositClient>;
+  vault: ReturnType<typeof createVaultCoreClient>;
+  verifierAdmin: ReturnType<typeof createVerifierAdminClient>;
+
+  /** Admin-only / dangerous operations (kept namespaced intentionally) */
+  admin: {
+    diamondCut: ReturnType<typeof createDiamondCutClient>;
+  };
 
   // convenience (optional): raw contract handles for quick reads/debugging
   contracts: {
@@ -74,6 +85,7 @@ export type ProtocolClient = {
     shieldedDeposit: ReturnType<typeof getContract>;
     vaultCore: ReturnType<typeof getContract>;
     verifierAdmin: ReturnType<typeof getContract>;
+    diamondCut: ReturnType<typeof getContract>;
   };
 };
 
@@ -84,9 +96,10 @@ export function createClient(config: ClientConfig): ProtocolClient {
 
   const chain = config.chain ?? hoodi;
 
-  // If caller passed a publicClient, use it; otherwise build one
+  // Build transport once
   const transport = http(config.rpcUrl ?? chain.rpcUrls.default.http[0]);
 
+  // If caller passed a publicClient, use it; otherwise build one
   const publicClient =
     config.publicClient ??
     createPublicClient({
@@ -107,21 +120,26 @@ export function createClient(config: ClientConfig): ProtocolClient {
         })
       : undefined);
 
-  const account =
-  config.account ??
-  (config.walletClient && "account" in config.walletClient
-    ? (config.walletClient.account as Address | undefined)
-    : undefined);
+  // For viem writeContract, we want an explicit account.
+  // Prefer config.account; otherwise try to read from walletClient if it has one.
+  const account: Address | undefined =
+    config.account ??
+    ((walletClient as unknown as { account?: Address } | undefined)?.account);
 
-  // Shared config for all facet clients
+  // Shared config for all facet/admin clients
   const shared = {
     diamondAddress: config.diamondAddress,
     publicClient,
     walletClient,
-    account: config.account,
+    account,
   } as const;
 
-  // Optional: expose raw contract handles (useful for debugging)
+  // --------------------------
+  // Raw contract handles (optional)
+  // --------------------------
+  // NOTE:
+  // - Reads can use public client only.
+  // - Writes will only be available if walletClient was provided/created.
   const nullifierContract = getContract({
     address: config.diamondAddress,
     abi: nullifierAbi,
@@ -143,32 +161,42 @@ export function createClient(config: ClientConfig): ProtocolClient {
   const privateWithdrawContract = getContract({
     address: config.diamondAddress,
     abi: privateWithdrawAbi,
-    client: { public: publicClient },
+    client: { public: publicClient, wallet: walletClient },
   });
 
   const shieldedDepositContract = getContract({
     address: config.diamondAddress,
     abi: shieldedDepositAbi,
-    client: { public: publicClient },
+    client: { public: publicClient, wallet: walletClient },
   });
 
   const vaultCoreContract = getContract({
     address: config.diamondAddress,
     abi: vaultCoreAbi,
-    client: { public: publicClient },
+    client: { public: publicClient, wallet: walletClient },
   });
 
   const verifierAdminContract = getContract({
     address: config.diamondAddress,
     abi: verifierAdminAbi,
-    client: { public: publicClient },
+    client: { public: publicClient, wallet: walletClient },
   });
 
+  const diamondCutContract = getContract({
+    address: config.diamondAddress,
+    abi: diamondCutAbi,
+    client: { public: publicClient, wallet: walletClient },
+  });
+
+  // --------------------------
+  // Return assembled SDK client
+  // --------------------------
   return {
     chain,
     diamondAddress: config.diamondAddress,
     publicClient,
     walletClient,
+    account,
 
     // facet clients
     nullifier: createNullifierClient(shared),
@@ -179,7 +207,12 @@ export function createClient(config: ClientConfig): ProtocolClient {
     vault: createVaultCoreClient(shared),
     verifierAdmin: createVerifierAdminClient(shared),
 
-    // raw contracts
+    // admin wiring (namespaced)
+    admin: {
+      diamondCut: createDiamondCutClient(shared),
+    },
+
+    // raw contracts (debug/convenience)
     contracts: {
       nullifier: nullifierContract,
       ownership: ownershipContract,
@@ -188,6 +221,7 @@ export function createClient(config: ClientConfig): ProtocolClient {
       shieldedDeposit: shieldedDepositContract,
       vaultCore: vaultCoreContract,
       verifierAdmin: verifierAdminContract,
+      diamondCut: diamondCutContract,
     },
   };
 }

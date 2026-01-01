@@ -77,4 +77,14 @@ export const SELECTORS = {
     getWithdrawVerifier: toFunctionSelector("getWithdrawVerifier()"),
     setWithdrawVerifier: toFunctionSelector("setWithdrawVerifier(address)"),
   },
+
+  // ──────────────────────────────
+  // DiamondCutFacet
+  // ──────────────────────────────
+  DiamondCut: {
+    diamondCut: toFunctionSelector("diamondCut((address,uint8,bytes4[])[],address,bytes)")
+},
+  // ──────────────────────────────
+  // DiamondLoupeFacet
+  // ──────────────────────────────
 } as const;
