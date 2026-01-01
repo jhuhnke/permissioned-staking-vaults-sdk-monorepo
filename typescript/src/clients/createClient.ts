@@ -19,6 +19,7 @@ import { policyAbi } from "../abi/policy";
 import { privateWithdrawAbi } from "../abi/privateWithdraw";
 import { shieldedDepositAbi } from "../abi/shieldedDeposit";
 import { vaultCoreAbi } from "../abi/vaultCore";
+import { verifierAdminAbi } from "../abi/verifierAdmin";
 
 import { createNullifierClient } from "./NullifierClient";
 import { createOwnershipClient } from "./OwnershipClient";
@@ -26,7 +27,7 @@ import { createPolicyClient } from "./PolicyClient";
 import { createPrivateWithdrawClient } from "./PrivateWithdrawClient";
 import { createShieldedDepositClient } from "./ShieldedDepositClient";
 import { createVaultCoreClient } from "./VaultCoreClient";
-
+import { createVerifierAdminClient } from "./VerifierAdminClient";
 /**
  * Minimal config for a usable SDK client.
  * - diamondAddress: REQUIRED because all calls route through the Diamond
@@ -57,6 +58,7 @@ export type ProtocolClient = {
   privateWithdraw: ReturnType<typeof createPrivateWithdrawClient>;
   shieldedDeposit: ReturnType<typeof createShieldedDepositClient>;
   vault: ReturnType<typeof createVaultCoreClient>;
+  verifierAdmin: ReturnType<typeof createVerifierAdminClient>;
 
   // facet clients
   nullifier: ReturnType<typeof createNullifierClient>;
@@ -71,6 +73,7 @@ export type ProtocolClient = {
     privateWithdraw: ReturnType<typeof getContract>;
     shieldedDeposit: ReturnType<typeof getContract>;
     vaultCore: ReturnType<typeof getContract>;
+    verifierAdmin: ReturnType<typeof getContract>;
   };
 };
 
@@ -155,6 +158,12 @@ export function createClient(config: ClientConfig): ProtocolClient {
     client: { public: publicClient },
   });
 
+  const verifierAdminContract = getContract({
+    address: config.diamondAddress,
+    abi: verifierAdminAbi,
+    client: { public: publicClient },
+  });
+
   return {
     chain,
     diamondAddress: config.diamondAddress,
@@ -168,6 +177,7 @@ export function createClient(config: ClientConfig): ProtocolClient {
     privateWithdraw: createPrivateWithdrawClient(shared),
     shieldedDeposit: createShieldedDepositClient(shared),
     vault: createVaultCoreClient(shared),
+    verifierAdmin: createVerifierAdminClient(shared),
 
     // raw contracts
     contracts: {
@@ -177,6 +187,7 @@ export function createClient(config: ClientConfig): ProtocolClient {
       privateWithdraw: privateWithdrawContract,
       shieldedDeposit: shieldedDepositContract,
       vaultCore: vaultCoreContract,
+      verifierAdmin: verifierAdminContract,
     },
   };
 }
