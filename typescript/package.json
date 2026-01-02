@@ -2,22 +2,58 @@
   "name": "@second-breakfast-labs/hushpools-typescript-sdk",
   "version": "0.1.0",
   "type": "module",
+
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.js",
+      "require": "./dist/react/index.cjs"
+    },
+    "./svelte": {
+      "types": "./dist/svelte/index.d.ts",
+      "import": "./dist/svelte/index.js",
+      "require": "./dist/svelte/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+
+  "files": ["dist"],
+
+  "sideEffects": false,
+
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+
   "dependencies": {
     "viem": "^2.43.4"
   },
+
+  "peerDependencies": {
+    "react": ">=18",
+    "svelte": ">=4"
+  },
+
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "svelte": { "optional": true }
+  },
+
   "devDependencies": {
     "tsup": "^8.0.1",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "@types/react": "^18.0.0"
   }
 }
